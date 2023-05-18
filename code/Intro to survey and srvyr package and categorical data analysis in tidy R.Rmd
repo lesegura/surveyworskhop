@@ -1,0 +1,203 @@
+---
+title: "Intro to survey and srvyr package and categorical data analysis in tidy R"
+author: "Luis E Segura"
+date: "2023-05-18"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(here)
+```
+
+### Step 1: Load Packages and Dataset
+We will be using four packages in this session. 
+
+The package tidyverse is a collection of packages designed for data science. All packages included in tidyverse share an underlying coding grammar often called tidy. You can learn more about coding using tidy language in the book R for Data Science by Hadley Wickham. An online version can be found here: https://r4ds.hadley.nz
+
+The package survey is an R package that provides functions to analyze data from complex surveys. Documentation for this package can be found here: https://r-survey.r-forge.r-project.org/survey/
+
+The package srvyr allows to use tidy coding language using functions from the package survey. You can read more about this here: http://gdfe.co/srvyr/ 
+
+We are going to use the dataset called NHANESraw that comes with the NHANES package. 
+
+The NHANES is survey data collected by the US National Center for Health Statistics (NCHS) which has conducted a series of health and nutrition surveys since the early 1960’s. Since 1999 approximately 5,000 individuals of all ages are interviewed in their homes every year and complete the health examination component of the survey. The NHANES target population is "the non-institutionalized civilian resident population of the United States". The NHANES (National Health and Nutrition Examination surveys) use complex survey designs (see http://www.cdc.gov/nchs/data/series/sr_02/sr02_162.pdf) that oversample certain subpopulations like racial minorities. Naive analysis of the NHANES data can lead to mistaken conclusions. 
+The NHANESraw include 75 variables available for the 2009-2010 and 2011-2012 sample years. NHANESraw has 20,293 observations of these variables plus four additional variables that describe that sample weighting scheme employed.
+
+```{r load packages and data, echo = T}
+### Load libraries needed
+library(tidyverse)
+library(survey)
+library(srvyr)
+library(NHANES)
+
+### Load data
+data("NHANESraw")
+```
+
+### Step 2: Data pre processing
+We use the function glimpse() to explore the whole dataset. 
+
+```{r data, echo = T}
+### Explore the whole dataset
+glimpse(NHANESraw)
+
+```
+
+R is case sensitive. So, one of the things I recommend is to transform all variable names to lower caps. This will prevent R throwing errors because you mistyped a variable name.
+
+```{r low caps, echo = T}
+### transform variable names to lower caps
+NHANESraw <- NHANESraw |>
+  rename_all(.funs = tolower)
+
+### print variable names
+NHANESraw |>
+  names()
+
+```
+
+The weights in the NHANES (wtmec2yr) were constructed assuming you have 2 years of data. However, we have 4 years of data. So, we are going to modify the weights by dividing them by 2.
+
+```{r weights, echo = T}
+NHANESraw <- NHANESraw |> 
+  mutate(new_wt = wtmec2yr / 2)
+
+```
+
+### Step 3: Creating a survey design object 
+
+Once your dataset is loaded and all variables you need are clean and recoded create a survey design object
+
+The survey design tells R what sampling design generated the data.
+The survey design object for a complex sample has the following information:
+- the data
+- weights (we are using the new weights we created above) 
+- strata
+- sample stages information
+
+The NHANES has 4 sampling stages. However, we only need to declare the first clustering stage (sdmvpsu).
+
+```{r survey design, echo = T}
+nhanes_design <- NHANESraw |> 
+  as_survey_design(strata = sdmvstra, 
+                   id = sdmvpsu, 
+                   weights = new_wt, 
+                   nest = T)
+
+nhanes_design
+
+```
+
+### Step 4: Exploring Categorical Data
+
+#### Summarizing a categorical variable
+
+We start by estimating the survey weighted frequencies of the variable race.
+```{r explore race, echo = T}
+race_tab <- nhanes_design |> 
+  group_by(race1) |>
+  summarise(freq = survey_total(), 
+            prop = survey_prop() * 100) |>
+  ### arrange table in descending order of prop
+  arrange(desc(prop))
+
+race_tab
+```
+
+Create a graph to visualy examine the weighted distribution of race.
+```{r race graph, echo = T}
+race_tab |>
+  ggplot(aes(x = race1, y = prop)) + 
+  geom_col() + 
+  coord_flip() +
+  scale_x_discrete(limits = race_tab$race1) + 
+  xlab("") +
+  ylab("%") +
+  labs(title = "Survey-Weighted Race Distribution in the U.S.")
+```
+
+
+#### Creating 2x2 tables
+We are going to create a 2x2 table of the weighted counts (frequencies) of marijuana use by race and plot it.
+```{r mu by race, echo = T}
+mj_race_tab <- nhanes_design |>
+  ### removing missings in the marijuana variable
+  filter(!is.na(marijuana)) |>
+  group_by(race1, marijuana) |>
+  summarise(Freq = survey_total())
+
+mj_race_tab
+```
+
+
+We can visualize the table created using a stacked bar graph. Note that the bar height corresponds to the total of the group.
+```{r mu by race plot, echo = T}
+mj_race_tab |> 
+  ggplot(aes(x = race1, y = Freq, fill = marijuana)) +
+  geom_col() + 
+  coord_flip() + 
+  xlab("Race group")
+```
+
+We might be more interested in the survey weighted proportion marijuana use by race group
+```{r mu by race2, echo = T}
+mj_race_prop <- nhanes_design |>
+  filter(!is.na(marijuana)) |>
+  group_by(race1, marijuana) |>
+  ### vartype = "ci" adds confidence intervals
+  summarise(prop = survey_prop(vartype = "ci"))
+
+mj_race_prop
+```
+
+
+Plotting the table above. Note that the height of the bar is equal to 1.
+```{r mu by race2 plot2, echo = T}
+mj_race_prop |> 
+  ggplot(aes(x = race1, y = prop, fill = marijuana)) + 
+  geom_col() + 
+  coord_flip() +
+  ylab("Proportion") + 
+  xlab("Race group")
+
+```
+
+#### Hypothesis testing
+We are going to run a test of heterogeneity using a Chisq to see if there is any difference in marijuana use between race groups.
+```{r chisq, echo = T}
+svychisq(~race1 + marijuana, nhanes_design, statistic = "Chisq")
+
+```
+
+#### Modeling categorical variables 
+Run a simple logistic regression using survey weighted data. We are going to load another package called broom and use the function tidy() to tidy our model regression output,
+```{r logistic, echo = T}
+library(broom)
+
+svyglm(marijuana ~ race1, design = nhanes_design, family = binomial(link = "logit")) |>
+  ### exponentiate coefficients from logistic regression, get confidence intervals
+  tidy(exponentiate = T, conf.int = T)
+  
+```
+
+Add independent variables to the logistic regression model to run a multivariable logistic regression
+```{r logistic2, echo = T}
+svyglm(marijuana ~ race1 + gender, design = nhanes_design, family = binomial(link = "logit")) |>
+  tidy(exponentiate = T, conf.int = T)
+```
+
+Add an interaction term between race and gender. Notice that in R you don't have to put the main effects when adding interactions.
+```{r interaction, echo = T}
+### logistic regression with main effects and interaction between race1 and gender (race1 * gender)
+svyglm(marijuana ~ race1 + gender + race1 * gender, design = nhanes_design, family = binomial(link = "logit")) |>
+  tidy(exponentiate = T, conf.int = T)
+
+### The model above with main effects is exactly the same as the following model with just the interaction term (without the main effects)
+### logistic regression with only an interaction between race1 and gender (race1 * gender)
+svyglm(marijuana ~ race1 * gender, design = nhanes_design, family = binomial(link = "logit")) |>
+  tidy(exponentiate = T, conf.int = T)
+```

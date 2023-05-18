@@ -1,0 +1,107 @@
+---
+title: "ICC example in tidy R"
+author: "Luis E Segura"
+date: "2023-05-18"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(here)
+
+```
+
+## R Markdown demonstration on calculating the Intraclass Correlation Coefficient (ICC)
+
+This Rmarkdown file accompanies Video 7 on how to compute the ICC. The ICC is one way we can assess the degree of correlation between individuals within a cluster.
+
+Remember the ICC = Between cluster variance / Total variance
+
+An ICC = 1 suggests high correlation within cluster, that is most of the variance is explained by the cluster. On the other hand, an ICC = 0 suggests low correlation within cluster, that is less variance is explained by the cluster.
+
+### Step 1: Load Packages and Dataset
+We will use two packages for this session.
+
+The package tidyverse is a collection of packages designed for data science. All packages included in tidyverse share an underlying coding grammar often called tidy. You can learn more about coding using tidy language in the book R for Data Science by Hadley Wickham. An online version can be found here: https://r4ds.hadley.nz
+
+The package survey is an R package that provides functions to analyze data from complex surveys. Documentation for this package can be found here: https://r-survey.r-forge.r-project.org/survey/
+
+We are going to use the dataset called apiclus2 that comes with the survey package. The dataset "apiclus2" is a dataset of schools within districts in California. 
+
+```{r load packages and data, echo = T}
+### Load libraries needed
+library(tidyverse)
+library(survey)
+library(srvyr)
+
+### Load data
+data(api) 
+
+```
+
+### Step 2: Explore the clustering variable of school district
+We use the function glimpse() to explore the whole dataset. 
+
+For this example, we will use the following variables:
+- api00: Academic Performance Index in 2000  
+- dname: district name
+- dnum: district number
+
+```{r explore, echo = T}
+### Explore the whole dataset
+glimpse(apiclus2)
+
+### How many schools are within school district?
+apiclus2 |>
+  group_by(dname, dnum) %>%
+  count() %>%
+  print(n = Inf)
+
+```
+
+
+### Step 3: Calculating the ICC
+We learned in class that we can assess the effect of clustering by calculating the ICC. 
+
+First, we fit a linear model with the group variable as the exposure or independent variable. 
+
+```{r lm, echo = T} 
+### Linear model
+model <- lm(api00 ~ as.factor(dnum), data = apiclus2)
+```
+
+Second, from this model we obtain the anova table. 
+
+In this table, Sum Sq of the exposure variable is the variance between groups. 
+Sum Sq of the residuals is the variance not explained by the groups. 
+The sum of both is the total variance. 
+```{r anova, echo = T}
+### anova table from the model.
+model_anova<- anova(model) 
+
+### print results
+model_anova 
+
+```
+
+Third, calculate the ICC.
+
+Now we have the elements to calculate the ICC: the between cluster variance and the total variance. 
+
+Divide the between cluster variance over the total variance to obtain the ICC.
+```{r icc, echo = T}
+### calculate total variance
+total_var <- model_anova[1 , "Sum Sq"] + model_anova[2 , "Sum Sq"]
+
+### calculate the ICC by dividing the between group variance by the total variance.
+icc_estimate <- model_anova[1 , "Sum Sq"] / total_var 
+
+### print results
+icc_estimate 
+
+```
+
+we obtain an ICC of 0.9018736, meaning that 90% of the variability in Academic Performance Index is explained by differences between school districts--between groups.

@@ -1,0 +1,62 @@
+---
+title: "Supplementary R Code - Data preparation and merging"
+author: "Luis E Segura"
+date: "2023-05-20"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+### Load packages
+mypackages <- c("here", "tidyverse", "readstata13")
+
+for(i in mypackages){
+  library(i, character.only = T)
+}
+```
+
+Raw data are available in the course Dropbox folder. You will need to update the filepath below to the appropriate location on your computer. Make sure the folder with the datafiles (I named it data) is saved inside your working directory. To view your working directory run the following command getwd(). To set a new working directory use setwd("FILEPATH") and use the FILEPATH for that directory, for example setwd("C:/Luis/Analysis of Complex Survey/").
+
+The original datafiles are in STATA format (.dat). We will use the package readstata13 to read them into R.
+
+```{r , }
+### assign the names of the Stata datasets to a vector
+nsduh_data_names <- list.files(path = here("data/"), pattern = "*.dta") 
+
+### create an empty list where we will store all the datasets as we read them in
+nsduh_list <- list()
+
+### Create a vector of the variable names we want to keep
+var_names <- c("caseid", "realid", "vestr", "verep", "year", "heryr", "anlyr", "mrjyr", "newrace2", 
+               "iranlfy", "age2", "income", "irsex", "pden", "abodanl", "abodher", "anydrug", "analwt_c")
+
+### loop to import the 8 NSDUH datasets into the list we created ("nsduh_list")
+for(i in seq_along(nsduh_data_names)){
+  
+  # Read each dataset into an element of the list nsduh_list
+  nsduh_list[[nsduh_data_names[i]]] <- read.dta13(here(paste0("data/", nsduh_data_names[i])),
+                                                  convert.factors = T,
+                                                  generate.factors = T,
+                                                  nonint.factors = T) |> 
+    # Convert variable names to lowercase
+    rename_all(tolower) |>
+    # Create year variable
+    mutate(year = if_else(i < 5, 2001 + i, 2003 + i), 
+           realid = year * 1e5 + caseid) |>
+    # Restrict datasets to just the variables we need for the analysis
+    select(var_names)
+  
+}
+
+### coerce list into a dataframe
+nsduh <- nsduh_list |>
+  bind_rows()
+
+### Save data
+
+save(nsduh, file = here("data/", "nsduh.RData"))
+save(nsduh, file = here("data/", "nsduh.csv"))
+```

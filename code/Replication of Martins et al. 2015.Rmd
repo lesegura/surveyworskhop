@@ -1,0 +1,404 @@
+---
+title: "Replication of Martins et al. 2015"
+author: "Luis E Segura"
+date: "2023-05-19"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(here)
+```
+
+### Step 1: Load Packages and Dataset
+We will be using four packages in this session. 
+
+The package tidyverse is a collection of packages designed for data science. All packages included in tidyverse share an underlying coding grammar often called tidy. You can learn more about coding using tidy language in the book R for Data Science by Hadley Wickham. An online version can be found here: https://r4ds.hadley.nz
+
+The package survey is an R package that provides functions to analyze data from complex surveys. Documentation for this package can be found here: https://r-survey.r-forge.r-project.org/survey/
+
+The package srvyr allows to use tidy coding language using functions from the package survey. You can read more about this here: http://gdfe.co/srvyr/ 
+
+The package broom takes the messy output of built-in functions in R, such as lm, nls, or t.test, and turns them into tidy tibbles. You can read more about this package here: https://cran.r-project.org/web/packages/broom/vignettes/broom.html
+
+The dataset we are going to use to replicate analyses done in Martins et. al. 2015 (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4447574/) comes from the National Survey on Drug Use and Health (NSDUH). We provide a version of the NSDUH ready for analysis here: https://www.dropbox.com/home/Survey%20Workshop/2022/Data 
+
+```{r load packages, echo = T}
+### Load libraries needed
+library(tidyverse)
+library(survey)
+library(srvyr)
+library(broom)
+
+```
+
+You can either store the dataset in the local drive of your computer or you can load it directly from cloud-based repositories. In this case, we are going to load it directly from dropbox. In order to do this, first copy the dropbox link for the dataset (https://www.dropbox.com/s/8vsczx1aevnsags/nsduh_ready4analysis.RData?dl=0). Make sure you change the last part of this link dl=0 to dl=1. Use the function url() to tell R that you are reading from a web link and the function load(), to read in .RData files into R.
+```{r load data, echo = T}
+load(url("https://www.dropbox.com/s/8vsczx1aevnsags/nsduh_ready4analysis.RData?dl=1")) 
+
+```
+
+### Step 2: Create a survey design object
+```{r survey design, echo = T}
+nsduh_design <- nsduh |>
+  as_survey_design(id = verep,
+                   strata = vestr, 
+                   weights = wt_new, 
+                   nest = T)
+
+nsduh_design
+```
+
+### Step 3: Replicating Table 1 Results in Martins et. al. 2015
+
+#### Estimate the prevalence of past-year heroin use in the total sample
+Estimate the prevalence of past-year heroin use (heryr_r) in each period (2002–2005 and 2008–2011) indicated by the variable year_r in the total sample.
+
+NOTE: in the paper by Martins et. al. 2015, prevalences are reported by 1000.
+
+```{r table 1 total sample, echo = T}
+### Estimate point prevalences of heroin use in the total sample
+totsam_heroin <- nsduh_design |>
+  group_by(year_r, heryr_r) |>
+  summarise(`Overall PY heroin use` = round(survey_prop(vartype = "ci", na.rm = T) * 1000, 2)) |>  
+  ### filter results for those endorsing PY use of heroin
+  filter(heryr_r == "Any PY use") |>
+  ### select only the columns of period and prevalence of PY heroin use
+  select(year_r, `Overall PY heroin use`) |>
+  ### creating a variable/column named Characteristics 
+  mutate(Characteristics = "Total Sample") |>
+  ### relocating the column of Characteristics before year_r
+  relocate(Characteristics, .before = year_r)
+
+totsam_heroin
+
+### p-value from Chi Squared test for heterogeneity
+svychisq( ~ heryr_r + year_r, nsduh_design, statistic = "Chisq") |>
+  tidy() 
+
+```
+
+#### Estimate the prevalence of past-year heroin use by race/ethnicity group
+Estimate the prevalence of past-year heroin use (heryr_r) in each period (2002–2005 and 2008–2011) indicated by the variable year_r among each of the race/ethnicity groups (race).
+
+```{r table 1 race, echo = T}
+### Estimate point prevalences of heroin use in the total sample
+race_heroin <- nsduh_design |>
+  group_by(race, year_r, heryr_r) |>
+  summarise(`Overall PY heroin use` = round(survey_prop(vartype = "ci", na.rm = T) * 1000, 2)) |>   
+  filter(heryr_r == "Any PY use") |>
+  select(race, year_r, `Overall PY heroin use`) |>
+  ### rename the variable race as Characteristics
+  rename(Characteristics = race)  
+
+tab1 <- totsam_heroin |> 
+  bind_rows(race_heroin)
+
+tab1
+
+```
+
+#### Estimate the prevalence of past-year heroin use by frequency of nonmedical prescription opioid use (NMUPO, variable freq_nmupo) in the total sample and by race/ethnic group
+
+```{r frequency nmupo, echo = T}
+fr_nmupo_heroin <- nsduh_design |>
+  group_by(year_r, freq_nmupo, heryr_r) |>
+  summarise(prevalence = round(survey_prop(vartype = "ci", na.rm = T) * 1000, 2)) |>
+  filter(heryr_r == "Any PY use") |>
+  select(year_r, freq_nmupo, prevalence) |>
+  pivot_wider(names_from = freq_nmupo, values_from = prevalence) |>
+  ### creating a variable/column named Characteristics 
+  mutate(Characteristics = "Total Sample") |>
+  ### relocating the column of Characteristics before year_r
+  relocate(Characteristics, .before = year_r)
+
+fr_race_nmupo_heroin <- nsduh_design |>
+  group_by(race, year_r, freq_nmupo, heryr_r) |>
+  summarise(prevalence = round(survey_prop(vartype = "ci", na.rm = T) * 1000, 2)) |>
+  filter(heryr_r == "Any PY use") |>
+  select(race, year_r, freq_nmupo, prevalence) |>
+  pivot_wider(names_from = freq_nmupo, values_from = prevalence) |>
+  rename(Characteristics = race) 
+
+tab1 <- tab1 |> 
+  left_join(fr_nmupo_heroin |>
+  bind_rows(fr_race_nmupo_heroin), by = c("Characteristics", "year_r"))
+
+tab1
+
+```
+
+#### Estimate the prevalence of past-year heroin use by any use of nonmedical prescription opioid use (NMUPO, variable anlyr_r) in the total sample and by race/ethnic group
+```{r any nmupo, echo = T}
+any_nmupo_heroin <- nsduh_design |>
+  group_by(year_r, anlyr_r, heryr_r) |>
+  summarise(prevalence = round(survey_prop(vartype = "ci", na.rm = T) * 1000, 2)) |>
+  filter(heryr_r == "Any PY use" & anlyr_r == "Any PY NMUPO") |>
+  select(year_r, anlyr_r, prevalence) |>
+  pivot_wider(names_from = anlyr_r, values_from = prevalence) |>
+  ### creating a variable/column named Characteristics 
+  mutate(Characteristics = "Total Sample") |>
+  ### relocating the column of Characteristics before year_r
+  relocate(Characteristics, .before = year_r)
+
+any_race_nmupo_heroin <- nsduh_design |>
+  group_by(race, year_r, anlyr_r, heryr_r) |>
+  summarise(prevalence = round(survey_prop(vartype = "ci", na.rm = T) * 1000, 2)) |>
+  filter(heryr_r == "Any PY use" & anlyr_r == "Any PY NMUPO") |>
+  select(race, year_r, anlyr_r, prevalence) |>
+  pivot_wider(names_from = anlyr_r, values_from = prevalence) |>
+  rename(Characteristics = race) 
+
+tab1 <- tab1 |> 
+  left_join(any_nmupo_heroin |>
+  bind_rows(any_race_nmupo_heroin), by = c("Characteristics", "year_r")) |>
+  rename(`No PY NMUPO` = `No use`, 
+         `1-29 days PY NMUPO` = `1-29 days`, 
+         `30-99 days PY NMUPO` = `30-99 days`, 
+         `100-365 days PY NMUPO` = `100+ days`)
+
+tab1
+
+```
+
+#### Estimate the associations between period (year_r) and PY heroin use for each level of frequency of NMUPO use
+In table 1, columns 5, 7, 9, and 11 show adjusted Odds Ratios of the association between time period and past year heroin use. 
+
+We use the function subset() passed over the survey design object to estimate the Odds Ratio among those who use NMUPO 1-29 days a year. 
+```{r associations freq nmupo, echo = T}
+svyglm(heryr_r ~ year_r + irsex + age + race + income + pden, 
+                  design = subset(nsduh_design, freq_nmupo == "1-29 days"), 
+                  family = binomial(link = "logit")) |> 
+  tidy(exponentiate = T, conf.int = T) |> 
+  mutate(`aOR (95%CI)` = str_glue("{round(estimate, 2)} ({round(conf.low, 2)}-{round(conf.high, 2)})")) |>
+  select(term, `aOR (95%CI)`) |>
+  filter(term %in% c("(Intercept)", "year_r2008-2011")) |>
+  rename(year_r = term) |>
+  mutate(Characteristics = "Total Sample", 
+         year_r = ifelse(year_r == "(Intercept)", "2002-2005", "2008-2011"), 
+         `aOR (95%CI)` = ifelse(year_r == "2002-2005", "", `aOR (95%CI)`)) |>
+  relocate(Characteristics, .before = year_r)
+```
+
+As you can imagine, you would need to fit multiple models for each level of frequency of NMUPO use alone and in combination with each race/ethnic group. 
+
+This would take a lot of copying and pasting, and it's cumbersome. So, we are going to make this more streamlined. 
+
+First, we create a create a function called regress.fun1 that produces estimates from a survey weighted logistic regression. 
+
+This function will take two arguments:
+- a sruvey design object called .design
+- a formula
+
+This function will save us copying and pasting multiple times the code above to obtain the odds ratios for Table 1 in Martins et. al. 2015
+```{r function freq nmupo, echo = T}
+f1 <- as.formula(paste("heryr_r", paste(c("year_r", "irsex", "age", "income", "pden"), collapse = " + "), sep = " ~ "))
+
+regress.fun1 <- function(.design, f){ 
+  svyglm(f, 
+         design = .design, 
+         family = binomial(link = "logit")) |> 
+    tidy(exponentiate = T, conf.int = T) |>
+    mutate(`aOR (95%CI)` = str_glue("{round(estimate, 2)} ({round(conf.low, 2)}-{round(conf.high, 2)})")) |>
+    select(term, `aOR (95%CI)`) |>
+    filter(term %in% c("(Intercept)", "year_r2008-2011")) |>
+    rename(year_r = term) 
+
+}
+
+```
+
+Next, we are going to save the levels of frequency of NMUPO use in an object and remove the "No use" level because we are not interested in estimating the associations for that level.
+```{r loop prep, echo = T}
+freq_nmupo_levels <- levels(nsduh_design$variables$freq_nmupo)
+
+freq_nmupo_levels <- freq_nmupo_levels[-1]
+
+freq_nmupo_levels
+
+```
+
+
+After this, we will create an empty object that is a list and then loop (repeat) our custom build function (regress.fun1) over each level of frequency of NMUPO use. 
+Each time we loop over a level of frequency of NMUPO use, we are also going to create inside this loop two formulas, one for estimating the Odds Ratios overall and by race/ethnic group.
+Each time we loop over a level of frequency of NMUPO use, we are also going to create different subsets of the survey design object considering the level of frequency of NMUPO use and race/ethnic group we want to get Odds Ratio from.
+
+```{r loop, echo = T}
+freq_nmupo_list <- list()
+
+for(i in freq_nmupo_levels){ 
+  
+  f1 <- as.formula(paste("heryr_r", paste(c("year_r", "irsex", "age", "race", "income", "pden"), collapse = " + "), sep = " ~ "))
+  f2 <- as.formula(paste("heryr_r", paste(c("year_r", "irsex", "age", "income", "pden"), collapse = " + "), sep = " ~ "))
+  
+  design_subset1 <- nsduh_design |> filter(freq_nmupo == i)
+  design_subset2 <- nsduh_design |> filter(freq_nmupo == i & race == "Whites")
+  design_subset3 <- nsduh_design |> filter(freq_nmupo == i & race == "Blacks")
+  design_subset4 <- nsduh_design |> filter(freq_nmupo == i & race == "Hispanics")
+  design_subset5 <- nsduh_design |> filter(freq_nmupo == i & race == "Others")
+  
+  model1 <- regress.fun1(design_subset1, f1)
+  
+  model1 <- model1 |> 
+    mutate(Characteristics = "Total Sample", 
+           year_r = ifelse(year_r == "(Intercept)", "2002-2005", "2008-2011"), 
+           `aOR (95%CI)` = ifelse(year_r == "2002-2005", "", `aOR (95%CI)`), 
+           nmupo = i) |>
+    relocate(Characteristics, .before = year_r)
+
+  
+  model2 <- regress.fun1(design_subset2, f2)
+  
+  model2 <- model2 |>
+    mutate(Characteristics = "Whites", 
+           year_r = ifelse(year_r == "(Intercept)", "2002-2005", "2008-2011"), 
+           `aOR (95%CI)` = ifelse(year_r == "2002-2005", "", `aOR (95%CI)`), 
+           nmupo = i) |>
+    relocate(Characteristics, .before = year_r)
+  
+  model3 <- regress.fun1(design_subset3, f2)
+  
+  model3 <- model3 |>
+    mutate(Characteristics = "Blacks", 
+           year_r = ifelse(year_r == "(Intercept)", "2002-2005", "2008-2011"), 
+           `aOR (95%CI)` = ifelse(year_r == "2002-2005", "", `aOR (95%CI)`), 
+           nmupo = i) |>
+    relocate(Characteristics, .before = year_r)
+  
+  model4 <- regress.fun1(design_subset4, f2)
+  
+  model4 <- model4 |>
+    mutate(Characteristics = "Hispanics", 
+           year_r = ifelse(year_r == "(Intercept)", "2002-2005", "2008-2011"), 
+           `aOR (95%CI)` = ifelse(year_r == "2002-2005", "", `aOR (95%CI)`), 
+           nmupo = i) |>
+    relocate(Characteristics, .before = year_r)
+  
+  model5 <- regress.fun1(design_subset5, f2)
+  
+  model5 <- model5 |>
+    mutate(Characteristics = "Others", 
+           year_r = ifelse(year_r == "(Intercept)", "2002-2005", "2008-2011"), 
+           `aOR (95%CI)` = ifelse(year_r == "2002-2005", "", `aOR (95%CI)`), 
+           nmupo = i) |>
+    relocate(Characteristics, .before = year_r)
+  
+  freq_nmupo_list[[i]] <- model1 |>
+    bind_rows(model2, model3, model4, model5) 
+  
+}
+
+freq_nmupo_list
+
+```
+
+Finally, we take the results in this list, coerce it to a dataframe, and merge it to the prevalence results we saved in the object called tab1. 
+
+```{r table with ORs, echo = T}
+tab1 <- freq_nmupo_list |> 
+  bind_rows() |>
+  pivot_wider(names_from = nmupo, values_from = `aOR (95%CI)`) |>
+  rename(`aOR (95%CI) 1-29 days` = `1-29 days`, 
+         `aOR (95%CI) 30-99 days` = `30-99 days`, 
+         `aOR (95%CI) 100+ days` = `100+ days`) |>
+  right_join(tab1, by = c("Characteristics", "year_r")) |>
+  relocate(`aOR (95%CI) 1-29 days`, .after = `1-29 days PY NMUPO`) |>
+  relocate(`aOR (95%CI) 30-99 days`, .after = `30-99 days PY NMUPO`) |>
+  relocate(`aOR (95%CI) 100+ days`, .after = `100-365 days PY NMUPO`)
+
+```
+
+
+Now, we are going to estimate the associations in the last column of Table 1. T
+
+First, we estimate the association between period and past year heroin use among those who use any nonmedical prescription opioid in the total sample. 
+We are going to use the function we created. 
+
+```{r, echo = T}
+### create design subsetted among those that use any NMUPO
+design_subset1 <- nsduh_design |> filter(anlyr_r == "Any PY NMUPO")
+
+### create a vector with the formula for our logistic regression.
+f1 <- as.formula(paste("heryr_r", paste(c("year_r", "irsex", "age", "race", "income", "pden"), collapse = " + "), sep = " ~ "))
+
+### pass both the survey design object and the formula on our function
+anlyr_totsam <- regress.fun1(design_subset1, f1)
+
+anlyr_totsam <- anlyr_totsam |> 
+  mutate(Characteristics = "Total Sample", 
+         year_r = ifelse(year_r == "(Intercept)", "2002-2005", "2008-2011"), 
+         `aOR (95%CI)` = ifelse(year_r == "2002-2005", "", `aOR (95%CI)`)) |>
+  relocate(Characteristics, .before = year_r)
+
+anlyr_totsam
+```
+
+Then, we are going to estimate the association between past-year heroin use and period for each race/ethnic group using a loop. 
+We are going to use our function and loop over each race/ethnic group.
+
+```{r loop2, echo = T}
+### create a list to store our results
+anlyr.list <- list()
+
+### store race levels in an object
+race_levels <- levels(nsduh_design$variables$race)
+
+### The loop: for each race level (i)
+for(i in race_levels){ 
+  ### create a design object and formula. Pass both to the regress.fun1() and store the results in an 
+  f <- as.formula(paste("heryr_r", paste(c("year_r", "irsex", "age", "income", "pden"), collapse = " + "), sep = " ~ "))
+  
+  design_subset <- nsduh_design |> filter(anlyr_r == "Any PY NMUPO" & race == i)
+  
+  ### Pass both to the regress.fun1() and store the results in an 
+  model <- regress.fun1(design_subset, f)
+  
+  ### store the model results in the list
+  anlyr.list[[i]] <- model |> 
+    mutate(Characteristics = i, 
+           year_r = ifelse(year_r == "(Intercept)", "2002-2005", "2008-2011"), 
+           `aOR (95%CI)` = ifelse(year_r == "2002-2005", "", `aOR (95%CI)`)) |>
+    relocate(Characteristics, .before = year_r)
+  
+}
+
+### coerce list into a dataframe
+anlyr.list <- anlyr.list |> 
+  bind_rows()
+
+### join it with the previous results from total sample
+anlyr.tab <- anlyr_totsam |>
+  bind_rows(anlyr.list) |>
+  rename(`aOR (95%CI) Any NMUPO` = `aOR (95%CI)`)
+
+```
+
+#### Putting everything together
+
+We are going to put all results together, the ones stored in tab1 and the last ones. 
+
+To display this table, we are going to use a package called flextable that easily create tables for reporting and publications. You can read more about this package here: https://ardata-fr.github.io/flextable-book/
+
+```{r table 1 final, echo = T}
+### Join results of tab1 and the ones from any nmupo use
+tab1 <- tab1 |>
+  left_join(anlyr.tab, by = c("Characteristics", "year_r"))
+
+library(flextable)
+
+### display table using the package flextable
+tab1 |> 
+  as_grouped_data(groups = c("Characteristics")) |>
+  as_flextable(max_row = Inf, show_coltype = F, spread_first_col = TRUE, hide_grouplabel = TRUE, groups_to = "titles") %>%
+  fontsize(size = 9) |>
+  style(i = ~!is.na(Characteristics),
+        pr_p = officer::fp_par(text.align = "left", padding = 5, line_spacing = 1.5)) %>%
+  prepend_chunks(i = ~is.na(Characteristics), j = 1, as_chunk("\t")) %>%
+  autofit() %>%
+  set_caption("Table 1. Average annual rate of past year heroin use and adjusted odds ratios for past year heroin use among people 12 years and older, by frequency of past year \nnonmedical use of prescription opioids (NMUPO), racial/ethnic group, and period.") %>%
+  theme_booktabs()
+  
+```

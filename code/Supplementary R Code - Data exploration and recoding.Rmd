@@ -91,7 +91,24 @@ skim(nsduh)
 ```
 
 ### Data manipulation
-We are going to create new variables of race, age, period indicator, indicator of nonmedical use of prescription opioids (NMUPO), NMUPO frequency, and survey weights.
+We are going to create new variables of race, age, period indicator, indicator of nonmedical use of prescription opioids (NMUPO), NMUPO frequency, and survey weights. 
+
+The codebook for the dataset can be found here: https://www.datafiles.samhsa.gov/sites/default/files/field-uploads-protected/studies/NSDUH-2011/NSDUH-2011-datasets/NSDUH-2011-DS0001/NSDUH-2011-DS0001-info/NSDUH-2011-DS0001-info-codebook.pdf 
+
+The variables are: 
+- newrace2 = race/ethnicity coded in 7 levels: 1 = NonHisp White; 2 = NonHisp Black/Afr Am; 3 = NonHisp Native Am/AK Native; 4 = NonHisp Native HI/Other Pac Isl; 
+                                               5 = NonHisp Asian; 6 = NonHisp more than one race; 7 = Hispanic
+- age2 = recoded age with 17 levels: 1 = Respondent is 12 years old; 2 = Respondent is 13 years old; 3 = Respondent is 14 years old; 4 = Respondent is 15 years old; 
+                                     5 = Respondent is 16 years old; 6 = Respondent is 17 years old; 7 = Respondent is 18 years old; 8 = Respondent is 19 years old;
+                                     9 = Respondent is 20 years old; 10 = Respondent is 21 years old; 11 = Respondent is 22 or 23 years old; 12 = Respondent is 24 or 25 years old;
+                                     13 = Respondent is between 26 and 29 years old; 14 = Respondent is between 30 and 34 years old; 15 = Respondent is between 35 and 49 years old;
+                                     16 = Respondent is between 50 and 64 years old; 17 = Respondent is 65 years old or older
+- year = continuous indicator of survey year: 2007, 2008, ..., 2011
+- iranlfy = imputation revised indicator of frequency of pain reliever use in the past year (continuous): 1, 2, 3, ..., 365, 991 (never used pain relievers), 
+                                                                                                          993 (did not use pain relievers in the past year)
+- anlyr = binary indicator of past year use of pain relievers: 0 = Did not use in the past year (IRANLRC = 3,9); 1 = Used within the past year (IRANLRC = 1,2)
+- heryr = binary indicator of past year heroin use: 0 = Did not use in the past year (IRHERRC = 3,9); 1 = Used within the past year (IRHERRC = 1,2)
+- analwt_c = continuous variable of survey weights
 
 #### Q: How would you find the names of the original variables in the nsduh dataframe? 
 The names() function returns a list containing the names of an object.
@@ -123,7 +140,7 @@ str(nsduh$newrace2)
 
 plot(nsduh$newrace2)
 
-### create a new variable called race
+### create a new variable called race with levels 1 = whites, 2 = blacks, 3 = hispanics, 4 = other race/ethnic group
 nsduh <- nsduh |>
   mutate(race = ifelse(newrace2 == "NonHisp Native Am/AK Native" |  
                          newrace2 == "NonHisp Native HI/Other Pac Isl" | 
@@ -150,20 +167,35 @@ nsduh |>
 ```
 
 #### Other recodings
+
+Instead of recoding one variable at a time, we could do the recodings all at once inside the function mutate(). 
+
+Remember to explore each variable on your own before doing any recoding. 
 ```{r other recode, }
 nsduh <- nsduh |>
-  mutate(freq_nmupo = factor(ifelse(iranlfy < 30, 1, 
-                                    ifelse(iranlfy > 29 & iranlfy < 100, 2, 
-                                           ifelse(iranlfy > 99 & iranlfy < 366, 3, 0))), 
+  ### recode (mutate) multiple variables at the same time
+  ### create a variable called freq_nmupo to indicate consumption of nonmedical prescription opoioids No use, 1-29 days, 30-99 days, and 100-365 days.
+  ### freq_nmupo is a factor, first set to 0 those that never used or did not use in the past year, and transform the variable to numeric
+  mutate(freq_nmupo = ifelse(iranlfy %in% c("NEVER USED PAIN RELIEVERS", "DID NOT USE PAIN RELIEVERS PAST YEAR"), 0, as.integer(iranlfy)),
+         ### categorize No use, 1-29 days, 30-99 days, and 100-365 days and turn it to factor
+         freq_nmupo = factor(ifelse(freq_nmupo == 0, 0, 
+                                    ifelse(freq_nmupo > 0 & freq_nmupo < 30, 1, 
+                                           ifelse(freq_nmupo > 29 & freq_nmupo < 100, 2, 3))), 
                              labels = c("No use", "1-29 days", "30-99 days", "100+ days")), 
+         ### create a numeric version of age2
          age2_num = as.numeric(age2), 
+         ### create two group ages 12-25 trs and 26+ yrs
          age = factor(ifelse(age2_num < 13, 1, 2), 
                       labels = c("12-25 yrs", "26+ yrs")), 
+         ### create a two period factor indicator (2002-2005 and 2008-2011)
          year_r = factor(ifelse(year < 2008, 0, 1), labels = c("2002-2005", "2008-2011")), 
+         ### recode the labels of past year nonmedical use of prescription opioids
          anlyr_r = recode(anlyr, "Did not use in the past year (IRANLRC = 3,9)" = "No PY use", 
                           "Used within the past year (IRANLRC = 1,2)" = "Any PY NMUPO"), 
+         ### recode the labels of past year heroin use
          heryr_r = recode(heryr, "Did not use in the past year (IRHERRC = 3,9)" = "No PY use", 
                           "Used within the past year (IRHERRC = 1,2)" = "Any PY use"), 
+         ### divide weights by a factor of 4 because each period has 4 years of data.
          wt_new = analwt_c / 4)
 
 ### save the dataframe as an R dataset.
@@ -174,12 +206,9 @@ write.csv(nsduh, file = here("data/", "nsduh_ready4analysis.csv"))
 
 ```
 
-[SAMHSA recommends that for the] "...estimation of the *annual average
-number of individuals* who have engaged in a particular behavior based upon pooled data from
-multiple years requires adjustment to the analysis weights. These adjusted weights would be
-created as the final weight divided by the number of years of combined data”
+Note on handling survey weights.
 
-Since the analysis of Martins et al 2015 paper compares the prevalences of heroin use
-between two four-year periods: 2002-2005 and 2008-2011, we need to adjust the original
-weights. We are going to create a new weight variable that is divided by 4, which is
-the number of years pooled per period.
+[SAMHSA recommends that for the] "...estimation of the *annual average number of individuals* who have engaged in a particular behavior based upon pooled data from multiple years requires adjustment to the analysis weights. These adjusted weights would be created as the final weight divided by the number of years of combined data.”
+
+Since the analysis of Martins et al 2015 paper compares the prevalences of heroin use between two four-year periods: 2002-2005 and 2008-2011, we need to adjust the original weights. 
+We are going to create a new weight variable that is divided by 4, which is the number of years pooled per period.

@@ -56,11 +56,10 @@ R is case sensitive. So, one of the things I recommend is to transform all varia
 ```{r low caps, echo = T}
 ### transform variable names to lower caps
 NHANESraw <- NHANESraw |>
-  rename_all(.funs = tolower)
+  janitor::clean_names()
 
-### print variable names
-NHANESraw |>
-  names()
+### print dataset
+NHANESraw
 
 ```
 

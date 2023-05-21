@@ -83,7 +83,8 @@ Sum Sq of the residuals is the variance not explained by the groups.
 The sum of both is the total variance. 
 ```{r anova, echo = T}
 ### anova table from the model.
-model_anova <- anova(model) 
+model_anova <- anova(model) |>
+  broom::tidy()
 
 ### print results
 model_anova 
@@ -98,10 +99,16 @@ Now we have the elements to calculate the ICC: the between cluster variance and 
 Divide the between cluster variance over the total variance to obtain the ICC.
 ```{r icc, echo = T}
 ### calculate total variance
-total_var <- model_anova[1 , "Sum Sq"] + model_anova[2 , "Sum Sq"]
+total_var <- model_anova |>
+  summarise(total_var = sum(sumsq))
+
+### extract variance between clusters
+cluster_var <- model_anova |>
+  filter(term == "as.factor(dname)") |>
+  select(sumsq)
 
 ### calculate the ICC by dividing the between group variance by the total variance.
-icc_estimate <- model_anova[1 , "Sum Sq"] / total_var 
+icc_estimate <- cluster_var / total_var 
 
 ```
 

@@ -1,0 +1,574 @@
+---
+title: "Brief Intro to tidy R"
+author: "Luis E Segura"
+date: "2023-05-20"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(here)
+```
+
+This course assumes you have some familiarity with coding in R. If you are completely new to R, we encourage you to stop here and get yourself acquainted with the basis of coding in R. See the “Learn how to program in R” section in Canvas for some resources for you to get familiarized with the very basics of R language. 
+
+This free online book: https://r4ds.hadley.nz is an excellent resource to start.
+
+R is a language and environment for statistical computing. R can be used to compute a wide variety of statistical tests and more (i.e. classification analysis, graphs, geographical analysis, machine learning, etc.).
+
+#### Why R?
+R is open source, compatible with every computing platform (Windows OS, MacOS, Linux, etc.), provides powerful statistical and graphical capabilities, facilitates reproducible research, and there is a vast community of R users inside and outside academia. 
+
+The R community has created an array of extensions (packages) for a broad range of applications. Also, it is easy to create packages for your own particular uses.
+
+Prior to starting the Analysis of Survey Complex Data course, please make sure you install the following R packages that we will use frequently. Below is the code to install the required packages for this course:
+
+install.packages("tidyverse","ggplot2","survey","skimr")
+
+Copy and paste this code into the console window in RStudio and press “Enter” to install the packages.
+
+Before we go any further, let’s ensure you’ve got a solid foundation in running R code and that you know some of the most helpful RStudio features.
+
+### Coding basics
+
+R can be used as a calculator to do basic math calculations. To execute code lines in R press in your keyboard MD + Enter (Mac) or CTRL + Enter (Windows)
+```{r basics, }
+1 / 200 * 30
+
+(59 + 73 + 2) / 3
+
+```
+
+You can create new objects with the *assignment* operator <- that will show on the right hand corner in the *Environment* window. 
+
+```{r assign, }
+### creating a new object named new_object and assigning (<-) the values 3 * 4 to that object
+new_object <- 3 * 4
+
+### Print the new object by typing its name in the Console and pressing Enter or execute the code below with CMD + Enter (Mac) or CTRL + Enter (Windows)
+new_object
+```
+
+When reading code, you can interpret new_object <- 3 * 4 as new_object *gets* value, where value in the example above is 3 times 4. 
+
+R will ignore any text after # for that line. This allows you to write comments, text that is ignored by R but read by other humans.
+
+Note: R is case sensitive and specific. If you call New_object, R will not find that object because the object's name is all in low caps. Also, if you call new_objects R will not find that object and will throw an error because the object name is singular *not* plural.
+
+```{r name, }
+### Call object. R cannot find mispelled objects
+New_object
+
+### Also mispelled and R can't find the object
+new_objects
+
+### R can find correctly spelled objects
+new_object
+```
+
+You can combine multiple elements into a vector with c()
+```{r combine}
+### combine prime numbers and save them into a vector called primes
+primes <- c(2, 3, 5, 7, 11, 13)
+
+### print primes
+primes
+```
+
+Any math operations on vectors is applied to every element inside the vector
+```{r vector ops, }
+### multiply elements inside the object primes by 2
+primes * 2
+
+### substract 1 from elements inside the object primes
+primes - 1
+```
+
+R has plenty of built-in functions that follow the following structure function_name(argument1 = value1, argument2 = value2, ...). You can see documentation about a particular function by placing a question mark sign (?) before the function. Lets try using the seq() function. If you are not familiar with seq(), call the function with the question mark place before the function name.
+```{r help, }
+?seq()
+```
+
+The function seq() makes regular sequences of numbers. Lets make a sequence of numbers from 1 to 10. 
+```{r seq, }
+seq(from = 1, to = 10)
+
+```
+
+You can ommit the names of the arguments in functions and write it as follows:
+```{r seq2, } 
+seq(1, 10)
+
+```
+
+Besides the built-in functions in R, the R community has developed many useful packages that are collections of functions to help do specific tasks. 
+
+We will work a lot with the package tidyverse, which is a collection of packages designed for data science. All packages included in tidyverse share an underlying coding grammar often called tidy. 
+
+Before loading a package in R, you have to install it for the first time. Do this by calling the function install.packages("name of package inside quotes"). You only have to do this once.
+```{r install pack, }
+install.packages("tidyverse")
+
+```
+
+Once the package is installed, you can use the package by loading it into your R session by calling the function library(package name without quotes). You will need to load the packages you want to use on every new session in R.
+```{r load pack, }
+library(tidyverse)
+```
+
+### Tidy coding and tidy verbs (functions)
+We are going to review examples of using a common coding grammar called tidy. For this examples, we will use a dataset that comes with R called esoph. This data comes from a case-control study of Espophageal Cancer in France. Data was collected from 1175 patients with various age / alcohol / tobacco use combinations. Among 1175 patients, 200 cancer “cases” are included. Then 975 non-cases were sampled from comparable hospital populations.
+
+To load datasets that come with R, use the function data("name of dataset in quotes"). 
+
+```{r data esoph, }
+data("esoph")
+```
+
+On the *Environment* window, you will see the dataset esoph as a <Promise>. Call the dataset esoph.
+```{r call data, }
+esoph
+```
+
+The variables in this dataset are: "agegp" Age group, "alcgp"	Alcohol consumption, "tobgp" Tobacco consumption, "ncases" Number of cases, and "ncontrols"	Number of controls. 
+
+The most common dataset formats in R are *dataframes* and *tibbles*. The most important difference between tibbles and data frames is the way tibbles print; they are designed for large datasets, so they only show the first few rows and only the columns that fit on one screen.
+
+```{r class, }
+class(esoph)
+```
+
+The dataset esoph is a dataframe.
+
+There are a few options to see the whole dataset. In RStudio, the most convenient is probably using the function View(), which will open an interactive scrollable and filterable view.
+```{r view data, }
+View(esoph)
+```
+
+You can also glimpse()
+```{r glimpse, }
+glimpse(esoph)
+
+```
+
+Esoph is a dataset with 88 rows (observations) and 5 variables (columns). Variables names are followed by abbreviations that tell you the type of each variable: <int> is short for integer, <dbl> is short for double (aka real numbers), <chr> for character (aka strings), <fct> factor, <ord> ordered factor, and <dttm> for date-time. These are important because the operations you can perform on a column depend so much on its “type”.
+
+We are going to explore the primary tidy verbs or functions that will allow you to manipulate data. 
+
+Tidy verbs have the following in commmon:
+- The first argument is always a data frame
+- The subsequent arguments typically describe which columns to operate on, using the variable names (without quotes)
+- The output is always a new data frame
+
+Each verb does one operation. To solve complex problems, we will usually require combining multiple verbs. To combine multiple verbs we use the pipe: |>
+ 
+The pipe takes the thing on its left and passes it along to the function on its right so that x |> function(y) is equivalent to function(x, y).
+And x |> function1(y) |> function2(z) is equivalent to function2(function1(x, y), z). 
+
+The easiest way to think of the pipe is to think of it as “then”. That makes it possible to get a sense of when reading code. Tidy verbs are organized into four groups based on what they operate on: rows, columns, groups, or tables.
+
+#### Tidy verbs operating on rows
+
+The function filter() allows you to keep rows based on the values of the columns (variables). The first argument is the data frame. The second and subsequent arguments are the conditions that must be true to keep the row. For example, find all observations aged 75+.
+```{r filter, }
+### dataframe as the first argument followed by the pipe |>
+esoph |>
+  ### filter function: filter column agegp (age group) to those 75+
+  filter(agegp == "75+")
+```
+
+You can use the following operators: > (greater than), >= (greater than or equal to), < (less than), <= (less than or equal to), == (equal to), and != (not equal to). 
+
+You can also combine conditions with & to indicate “and” (check for both conditions), or | to indicate “or” (check for either condition).
+
+For example, find all observations aged 75+ AND that smoke 30+ gm of tobacco per day.
+```{r filter and, }
+### dataframe as the first argument followed by the pipe |>
+esoph |>
+  ### filter function: filter column/variable agegp (age group) to those 75+ AND column tobgp (tobacco consumption) to those that consume 30+ per day
+  filter(agegp == "75+" & tobgp == "30+")
+```
+
+The operator %in% is an useful shortcut when you’re combining | (or) and == (equal to). It keeps rows where the variable equals one of the values on the right. 
+
+For example, find all observations aged 45-54 or aged 75+. 
+
+```{r filter and, }
+esoph |>
+  ### filter function: filter column/variable agegp (age group) to those 45-54 or 75+
+  filter(agegp == "45-54" | agegp == "75+")
+
+### Same results using the %in% operator
+
+esoph |>
+  ### filter function: filter column/variable agegp (age group) to those 45-54 or 75+
+  filter(agegp %in% c("45-54", "75+"))
+```
+
+Notice that when you filter (or use any other tidy verb or function), R executes the filtering operation, creating a new data frame, and then prints it on your console. It doesn’t modify the existing esoph dataset because these functions never modify their inputs. To save the result, you need to use the assignment operator: <-
+
+```{r save results, }
+### Save results from filtering to a new object called esoph_age_45_75
+esoph_age_45_75 <- esoph |>
+  ### filter function: filter column/variable agegp (age group) to those 45-54 or 75+
+  filter(agegp %in% c("45-54", "75+"))
+
+### print results
+esoph_age_45_75
+```
+
+The function arrange() changes the order of the rows based on the value of the columns. It takes a data frame and a set of column names (or more complicated expressions) to order by. If you provide more than one column name, each additional column will be used to break ties in the values of preceding columns. You can use desc() on a column inside of arrange() to re-order the data frame based on that column in descending (big-to-small) order. For example, order data esoph based on age group in descending order.
+
+```{r arrange, }
+esoph |>
+  arrange(desc(agegp))
+```
+
+The distinct() function finds all the unique rows in a dataset. For example, find unique values of alcohol and tobacco consumption.
+```{r distinct, }
+esoph |>
+  distinct(alcgp, tobgp)
+
+### if you want to the keep other columns when filtering for unique rows, you can use the .keep_all = TRUE option.
+esoph |>
+  distinct(alcgp, tobgp, .keep_all = TRUE)
+```
+
+The function count() find the number of occurrences. These will be displayed in a new column called *n*
+```{r count, }
+esoph |>
+  count(alcgp, tobgp)
+
+### with sort = TRUE argument you can arrange them in descending order of number of occurrences
+esoph |>
+  count(alcgp, tobgp, sort = T)
+```
+
+#### Tidy verbs operating on columns
+
+The function mutate() adds new columns that can be calculated from the existing columns. We are going to add a column (variable) called age_gp2 (age group 2). This variable will indicate whether the individual is older than 54 or otherwise. To do this, we will use a function called ifelse() which structure is ifelse(variable condition is met, assign value1, otherwise assign value2). In this example, ifelse(agegp is 25-34 or 35-44 or 45-54, age_gp2 gets a value of 0, otherwise age_gp2 gets a of 1).
+```{r mutate, }
+esoph |>
+  ### ifelse(agegp is 25-34 or 35-44 or 45-54, age_gp2 gets a value of 0, otherwise age_gp2 gets a of 1).
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1))
+```
+
+We can relocate the new variable age_gp2 before or after the variable agegp using the relocate() function
+```{r relocate, }
+esoph |>
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1)) |>
+  ### relocate age_gp2 before agegp
+  relocate(age_gp2, .before = agegp)
+
+esoph |>
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1)) |>
+  ### relocate age_gp2 after agegp
+  relocate(age_gp2, .after = agegp)
+```
+
+Another useful function is select() that allows us to manage large datasets and keep only variables that are relevant for our analysis. 
+```{r select, }
+esoph |>
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1)) |>
+  ### select all variables except agegp
+  select(age_gp2, alcgp, tobgp, ncases, ncontrols)
+
+### Another way of using this is by negating the variable we want to exclude by using the operator ! that means "not"
+esoph |>
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1)) |>
+  ### select all variables except agegp
+  select(!agegp)
+
+```
+
+You can combine select with other functions, like where() to select variables that meet a certain condition. For example, select variables that are numeric
+```{r select where, }
+esoph |>
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1)) |>
+  ### select numeric variables
+  select(where(is.numeric))
+```
+
+There are a number of helper functions you can use within select(), see ?select()
+
+- starts_with("abc"): matches names that begin with “abc”.
+- ends_with("xyz"): matches names that end with “xyz”.
+- contains("ijk"): matches names that contain “ijk”.
+- num_range("x", 1:3): matches x1, x2 and x3.
+
+If you want to rename some variables use the function rename(). The structure of this function is rename(dataset, new variable name = old variable name)
+```{r rename, }
+esoph |>
+  rename(age_group = agegp)
+```
+
+#### Operating on both rows and columns with the pipe |>
+
+So, lets put all these functions together. Imagine you want to find the frequency of cases older than 54 that smoke more than 20 cigarettes per day or more and save those results in an object called my_results.
+```{r together, }
+### save results in an object called my_results
+my_results <- esoph |>
+  ### create a new variable of age called age_gp2 with ifelse(agegp is 25-34 or 35-44 or 45-54, age_gp2 gets a value of 0, otherwise age_gp2 gets a of 1).
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1)) |>
+  ### filter the data to those older than 54 (age_gp2 == 1), and those that consume more than 20 cigarettes per day
+  filter(age_gp2 == 1 & tobgp %in% c("20-29", "30+")) |>
+  ### select all variables except alcgp, ncontrols, age_gp2
+  select(!c(alcgp, ncontrols, age_gp2))
+
+my_results
+
+```
+
+Another useful tidy verbs or functions are groups_by() and summarize(). These functions allow you to group data by specific variables and work with that. For example, lets group our dataset by those younger and older than 54 using the new age group variable we created above (age_gp2)
+```{r group by, }
+esoph |>
+  ### create a new variable of age called age_gp2 with ifelse(agegp is 25-34 or 35-44 or 45-54, age_gp2 gets a value of 0, otherwise age_gp2 gets a of 1).
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1)) |>
+  group_by(age_gp2)
+
+```
+
+group_by() doesn’t change the data but, if you look closely at the output, you’ll notice that the output indicates that it is “grouped by” age_gp2 (Groups: age_gp2 [2]). This means subsequent operations will now work “by age group”. group_by() adds this grouped feature (referred to as class) to the data frame, which changes the behavior of the subsequent verbs applied to the data.
+
+The most important grouped operation is a summary, which, if being used to calculate a single summary statistic, reduces the data frame to have a single row for each group. Lets calculate the number (n) of cases by age_gp2 using the function sum(). What sum() is going to do is sum all cases and because the data is grouped by age_gp2 the sum is going to be for each age_gp2.
+
+```{r group by, }
+esoph |>
+  mutate(age_gp2 = ifelse(agegp %in% c("25-34", "35-44", "45-54"), 0, 1)) |>
+  ### group by age_gp2
+  group_by(age_gp2) |>
+  ### sum the number of cases for each age group
+  summarise(n = sum(ncases))
+
+```
+
+55 cases are less than 54 year old and 144 cases are older than 54 years. 
+
+Lets look at another example using the dataset infert. This dataset is a matched case control study about infertility after spontaneous and induced abortion. 
+
+Calculate the average parity and number of ocurrences (n) by education.
+```{r summary, }
+### load data
+data("infert")
+
+### call data
+infert
+
+### Calculate the average parity and number of ocurrences (n) by education.
+infert |>
+  ### group data by education
+  group_by(education) |>
+  ### calculate mean parity using mean()
+  summarise(mean_parity = mean(parity),
+            ### number of ocurrences using n()
+            n = n()) |>
+  ### order from lowest to n
+  arrange(desc(n))
+```
+
+#### Changing the data orientation
+
+Sometimes, it is necessary to rearrange the orientation of your data, we call this pivot. You can pivot your data longer or wider. 
+
+We go back to the example above, and calculate the mean parity by education. In our original table, the rows are education groups. 
+
+We are going to pivot this output wider, meaning one column per education group and the rows are going to be the mean parity.
+
+```{r pivot wider, }
+### Calculate the average parity by education and save results in an object called infert_results
+infert_results <- infert |>
+  ### group data by education
+  group_by(education) |>
+  ### calculate mean parity using mean()
+  summarise(mean_parity = mean(parity)) 
+
+### print results
+infert_results
+
+### save new wide table in an object called infert_wider
+infert_wider <- infert_results |>
+  ### pivot wider
+  pivot_wider(names_from = education, values_from = mean_parity) |>
+  ### create a variable called statistic and give it the name mean parity
+  mutate(statistic = "Mean Parity") |>
+  ### relocate the variable statistic before the column 0-5yrs
+  relocate(statistic, .before = `0-5yrs`)
+
+infert_wider
+```
+
+Our results table is currently in wide format. Lets pivot it back to long form by using pivot_longer(). Remember we created an extra variable called statistics, so we are going to remove it to go back to our original results stored in infert_results
+```{r pivot longer, }
+### save results in an object called infert_long
+infert_long <- infert_wide |>
+  ### pivot longer
+  pivot_longer(cols = c(`0-5yrs`, `6-11yrs`, `12+ yrs`), names_to = "education", values_to = "mean_parity") |>
+  ### remove the variable statistic
+  select(!statistic)
+
+### print results
+infert_long
+
+### same as the original table infert_results
+infert_results
+```
+
+#### Custom Functions in R
+
+R has many built-in functions and these are greatly expanded by the many packages developed by the R community. However, you can also create custom functions for your own needs. Functions allow you to automate common tasks in a more powerful and general way than copy-and-pasting. Writing a function has three big advantages over using copy-and-paste:
+
+- You can give a function an evocative name that makes your code easier to understand.
+- As requirements change, you only need to update code in one place, instead of many.
+- You eliminate the chance of making incidental mistakes when you copy and paste (i.e. updating a variable name in one place, but not in another).
+- It makes it easier to reuse work from project-to-project, increasing your productivity over time.
+
+A good rule of thumb is to consider writing a function whenever you’ve copied and pasted a block of code more than twice (i.e. you now have three copies of the same code). 
+
+To write a function you need to first analyse your repeated code to figure what parts are constant and what parts vary. 
+
+The following code calculates the mean parity by education, case status, number of spontaneous abortion, and number of induced abortion.
+
+```{r repeated code, }
+infert |> 
+  group_by(education) |>
+  summarise(mean_parity = mean(parity))
+
+infert |> 
+  group_by(case) |>
+  summarise(mean_parity = mean(parity))
+
+infert |> 
+  group_by(spontaneous) |>
+  summarise(mean_parity = mean(parity))
+
+infert |> 
+  group_by(induced) |>
+  summarise(mean_parity = mean(parity))
+```
+
+If we look closely, these code is the same except for the grouping variable: education, case, spontaneous, and induced. So turn this into a function
+
+To turn this into a function you need three things:
+
+- A name. Here we’ll use grouped_avg_fun because this function calculates group averages.
+
+- The arguments. The arguments are things that vary across calls and our analysis above tells us that what varies is the grouping variable. We’ll call it x.
+
+- The body. The body is the code that’s repeated across all the calls.
+
+A function has the following template:
+
+```{r function template, }
+name <- function(arguments){
+        body
+}
+
+```
+
+Lets build our custom function to estimate the mean parity by group. 
+```{r custom function, }
+grouped_avg_fun <- function(df, group_var, outcome){
+  df |> 
+    ### the function !!sym() recalls the input x without quotes ""
+    group_by(!!sym(group_var)) |>
+    summarise(mean_parity = mean(!!sym(outcome))) |>
+    mutate(variable = paste0(group_var)) |>
+    rename(level = !!sym(group_var)) |>
+    relocate(variable, .before = level) |>
+    mutate(level = factor(level))
+}
+```
+
+Lets test our function.
+```{r test custom function, }
+infert |>
+  grouped_avg_fun("education", "parity")
+
+infert |>
+  grouped_avg_fun("case", "parity")
+
+infert |>
+  grouped_avg_fun("induced", "parity")
+
+infert |>
+  grouped_avg_fun("spontaneous", "parity")
+
+```
+
+As you can see we obtained the same results with less lines of code, which makes our code more efficient. But we can still do better.
+
+#### Iterations
+One powerful tool is to iterate (repeat) the same operation using loops. Here we introduce a for loop. For loops have the following structure:
+
+```{r for loop structure, }
+
+for(each_element in object){
+  task 
+}
+
+```
+
+We are going to loop our grouped_avg_fun over the variables of education, case, induced, and spontaneous to obtain the mean parity for each group.
+
+First, we store the name of our variables in an object called var_names
+```{r for loop1, }
+### store variable names in an object called var_names
+var_names <- c("education", "case", "induced", "spontaneous")
+```
+
+Second, we create an object that is an empty list with the function list() and call that object resultsList
+```{r for loop2, }
+### store an empty list called resultsList
+resultsList <- list()
+
+```
+
+Third, run a for loop. We tell R that for each variable (i) in var_names run our function grouped_avg_fun and store the results of each calculation in resultsList. 
+
+Notice that each variable going into our function grouped_avg_fun(i, "parity") is declared with an i. To access elements in a list, you have to subset the list using double brackets [[]]
+```{r for loop3, }
+### for loop
+for(i in var_names){
+  
+  resultsList[[i]] <- infert |> 
+    grouped_avg_fun(i, "parity") 
+}
+
+### print list results
+resultsList
+```
+
+When you call resultsList, notice the structure of a list. A list is an object that unlike a dataframe or a vector, can store elements of different kinds. In a list, you can store together a dataframe, a vector, text, etc, which makes it very flexible. This cannot be done with other types of vectors. See the following example.
+```{r lists, }
+### store the dataframe infert in a list called a
+list(a = infert, 
+     ### b is a single element text
+     b = "hello", 
+     ### c is an object that is a combination of numbers
+     c = c(1, 2, 3, 4, 5, 6, 7, 8))
+
+### We cannot do this with a dataframe. Notice that R throws you an error
+as.data.frame(a = infert, 
+     b = "hello", 
+     c = c(1, 2, 3, 4, 5, 6, 7, 8))
+
+### Nor can we combine them with as a vector
+vector(a = infert, 
+     b = "hello", 
+     c = c(1, 2, 3, 4, 5, 6, 7, 8))
+```
+
+This makes lists very powerful to store multiple kind of objects.
+
+Finally, we are going to combine the elements in our resultsList as a dataframe using the function bind_rows(). This function appends the elements of the list one on top of each other and gives us a nice table with results. A similar function to append by columns instead of rows is bind_cols().
+```{r combine results, }
+resultsList |>
+  bind_rows()
+```
+
+There are many more things to explore. But these quick recap gives you the basics of how to code with tidy grammar. We encourage you to spend some time reading and practicing the examples of the book by Hadley Wickham called R for Data Science, you can find it here: https://r4ds.hadley.nz
+
+As always, google is your best friend when coding in R. Whenever you run into a coding problem that needs troubleshooting, your best bet is to google the solution. The R community is very active on the web. And forums dedicated to ask and answer R coding questions abound. A good one to check out is stackoverflow.

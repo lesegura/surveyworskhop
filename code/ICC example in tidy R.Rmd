@@ -12,8 +12,10 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(here)
+options(scipen = 999)
 
+library(here)
+ 
 ```
 
 ## R Markdown demonstration on calculating the Intraclass Correlation Coefficient (ICC)
@@ -96,17 +98,27 @@ Third, calculate the ICC.
 
 Now we have the elements to calculate the ICC: the between cluster variance and the total variance. 
 
-Divide the between cluster variance over the total variance to obtain the ICC.
-```{r icc, echo = T}
+Calculate the total variance by summing the sum of squares of the clustering variable and the residuals. Save the results in an object called total_var.
+```{r total variance, echo = T}
 ### calculate total variance
 total_var <- model_anova |>
   summarise(total_var = sum(sumsq))
+```
 
+The total variance is `r total_var`
+
+Then save the variance between clusters in an object called cluster_var
+```{r cluster variance, echo = T}
 ### extract variance between clusters
 cluster_var <- model_anova |>
   filter(term == "as.factor(dname)") |>
   select(sumsq)
+```
 
+The between cluster variance is `r cluster_var`
+
+Divide the between cluster variance over the total variance to obtain the ICC.
+```{r icc, echo = T}
 ### calculate the ICC by dividing the between group variance by the total variance.
 icc_estimate <- cluster_var / total_var 
 

@@ -222,20 +222,18 @@ groups. The sum of both is the total variance.
 
 ``` r
 ### anova table from the model.
-model_anova <- anova(model) 
+model_anova <- anova(model) |>
+  broom::tidy()
 
 ### print results
 model_anova 
 ```
 
-    ## Analysis of Variance Table
-    ## 
-    ## Response: api00
-    ##                  Df  Sum Sq Mean Sq F value    Pr(>F)    
-    ## as.factor(dname) 39 2028811   52021  20.267 < 2.2e-16 ***
-    ## Residuals        86  220740    2567                      
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## # A tibble: 2 × 6
+    ##   term                df    sumsq meansq statistic   p.value
+    ##   <chr>            <int>    <dbl>  <dbl>     <dbl>     <dbl>
+    ## 1 as.factor(dname)    39 2028811. 52021.      20.3  1.64e-29
+    ## 2 Residuals           86  220740.  2567.      NA   NA
 
 #### Calculate the ICC
 
@@ -244,15 +242,35 @@ Third, calculate the ICC.
 Now we have the elements to calculate the ICC: the between cluster
 variance and the total variance.
 
+Calculate the total variance by summing the sum of squares of the
+clustering variable and the residuals. Save the results in an object
+called total_var.
+
+``` r
+### calculate total variance
+total_var <- model_anova |>
+  summarise(total_var = sum(sumsq))
+```
+
+The total variance is 2249551.4285714
+
+Then save the variance between clusters in an object called cluster_var
+
+``` r
+### extract variance between clusters
+cluster_var <- model_anova |>
+  filter(term == "as.factor(dname)") |>
+  select(sumsq)
+```
+
+The between cluster variance is 2028810.9785714
+
 Divide the between cluster variance over the total variance to obtain
 the ICC.
 
 ``` r
-### calculate total variance
-total_var <- model_anova[1 , "Sum Sq"] + model_anova[2 , "Sum Sq"]
-
 ### calculate the ICC by dividing the between group variance by the total variance.
-icc_estimate <- model_anova[1 , "Sum Sq"] / total_var 
+icc_estimate <- cluster_var / total_var 
 ```
 
 We obtain an ICC of 0.9018736, meaning that 90% of the variability in

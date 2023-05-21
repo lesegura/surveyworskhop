@@ -192,13 +192,13 @@ You can specify different distributions in the function svyglm by changing famil
 
 Another thing I want you to notice is the warning message that R threw at us. Do not panic, glm is just picky when it comes to specifying binomial (and Poisson) models. It warns if it detects that the number of trials or successes is non-integral, but it goes ahead and fits the model anyway. If you want to suppress the warning (and you're sure it's not a problem), use family = quasibinomial(link = "logit") instead.
 
-Add independent variables to the logistic regression model to run a multivariable logistic regression
+We can add independent variables to the logistic regression model with a + sign to run a multivariable logistic regression
 ```{r logistic2, echo = T}
 svyglm(marijuana ~ race1 + gender, design = nhanes_design, family = binomial(link = "logit")) |>
   tidy(exponentiate = T, conf.int = T)
 ```
 
-Add an interaction term between race and gender. Notice that in R you don't have to put the main effects when adding interactions.
+And add an interaction term between race and gender with the * sign. Notice that in R you don't have to put the main effects when adding interactions.
 ```{r interaction, echo = T}
 ### logistic regression with main effects and interaction between race1 and gender (race1 * gender)
 svyglm(marijuana ~ race1 + gender + race1 * gender, design = nhanes_design, family = binomial(link = "logit")) |>

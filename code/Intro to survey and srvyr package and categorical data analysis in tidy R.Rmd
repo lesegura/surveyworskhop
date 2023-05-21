@@ -177,15 +177,20 @@ svychisq(~race1 + marijuana, nhanes_design, statistic = "Chisq")
 ```
 
 #### Modeling categorical variables 
-Run a simple logistic regression using survey weighted data. We are going to load another package called broom and use the function tidy() to tidy our model regression output,
-```{r logistic, echo = T}
-library(broom)
+Run a simple survey weighted logistic regression using the function svyglm() from the survey package. We are going to use the function tidy() from the broom package to tidy our model regression output. The first argument of the svyglm() function is the outcome variable, followed by the predictor variables. These should be written as a formula, using the ~ sign to denote that you are regressing your outcome on the predictors.
 
+```{r logistic, echo = T}
 svyglm(marijuana ~ race1, design = nhanes_design, family = binomial(link = "logit")) |>
   ### exponentiate coefficients from logistic regression, get confidence intervals
-  tidy(exponentiate = T, conf.int = T)
+  broom::tidy(exponentiate = T, conf.int = T)
   
 ```
+
+The output from the svyglm is a table with regression coefficients. Here the coefficients are exponentiated into Odds Ratios, because we set the option exponentiated to TRUE in the function tidy(). You can set it to FALSE to obtain the log odds instead. 
+
+You can specify different distributions in the function svyglm by changing family to poisson to fit a poisson model, gaussian to fit a linear regression, etc. 
+
+Another thing I want you to notice is the warning message that R threw at us. Do not panic, glm is just picky when it comes to specifying binomial (and Poisson) models. It warns if it detects that the number of trials or successes is non-integral, but it goes ahead and fits the model anyway. If you want to suppress the warning (and you're sure it's not a problem), use family = quasibinomial(link = "logit") instead.
 
 Add independent variables to the logistic regression model to run a multivariable logistic regression
 ```{r logistic2, echo = T}

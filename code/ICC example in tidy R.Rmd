@@ -2,7 +2,9 @@
 title: "ICC example in tidy R"
 author: "Luis E Segura"
 date: "2023-05-18"
-output: html_document
+output: 
+  github_document:
+    toc: true
 editor_options: 
   chunk_output_type: console
 ---
@@ -35,7 +37,6 @@ We are going to use the dataset called apiclus2 that comes with the survey packa
 ### Load libraries needed
 library(tidyverse)
 library(survey)
-library(srvyr)
 
 ### Load data
 data(api) 
@@ -56,7 +57,7 @@ glimpse(apiclus2)
 
 ### How many schools are within school district?
 apiclus2 |>
-  group_by(dname, dnum) %>%
+  group_by(dname) %>%
   count() %>%
   print(n = Inf)
 
@@ -66,13 +67,15 @@ apiclus2 |>
 ### Step 3: Calculating the ICC
 We learned in class that we can assess the effect of clustering by calculating the ICC. 
 
+#### Fit a linear regression
 First, we fit a linear model with the group variable as the exposure or independent variable. 
 
 ```{r lm, echo = T} 
 ### Linear model
-model <- lm(api00 ~ as.factor(dnum), data = apiclus2)
+model <- lm(api00 ~ as.factor(dname), data = apiclus2)
 ```
 
+#### Obtain the variances from the linear model
 Second, from this model we obtain the anova table. 
 
 In this table, Sum Sq of the exposure variable is the variance between groups. 
@@ -80,13 +83,14 @@ Sum Sq of the residuals is the variance not explained by the groups.
 The sum of both is the total variance. 
 ```{r anova, echo = T}
 ### anova table from the model.
-model_anova<- anova(model) 
+model_anova <- anova(model) 
 
 ### print results
 model_anova 
 
 ```
 
+#### Calculate the ICC
 Third, calculate the ICC.
 
 Now we have the elements to calculate the ICC: the between cluster variance and the total variance. 
@@ -99,9 +103,6 @@ total_var <- model_anova[1 , "Sum Sq"] + model_anova[2 , "Sum Sq"]
 ### calculate the ICC by dividing the between group variance by the total variance.
 icc_estimate <- model_anova[1 , "Sum Sq"] / total_var 
 
-### print results
-icc_estimate 
-
 ```
 
-we obtain an ICC of 0.9018736, meaning that 90% of the variability in Academic Performance Index is explained by differences between school districts--between groups.
+We obtain an ICC of `r icc_estimate`, meaning that 90% of the variability in Academic Performance Index is explained by differences between school districts--between groups.

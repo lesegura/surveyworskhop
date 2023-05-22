@@ -322,7 +322,7 @@ race_tab
     ## 4 Other     23389002.  2270278.  7.69   0.738
     ## 5 Hispanic  18951150.  2885203.  6.23   1.00
 
-Create a graph to visualy examine the weighted distribution of race.
+Create a graph to visually examine the weighted distribution of race.
 
 ``` r
 race_tab |>
@@ -332,12 +332,16 @@ race_tab |>
   scale_x_discrete(limits = race_tab$race1) + 
   xlab("") +
   ylab("%") +
-  labs(title = "Survey-Weighted Race Distribution in the U.S.")
+  labs(title = "Survey-Weighted Race Distribution in the U.S.") +
+  theme_classic()
 ```
 
 ![](Intro-to-survey-and-srvyr-package-and-categorical-data-analysis-in-tidy-R_files/figure-gfm/race%20graph-1.png)<!-- -->
 
 ##### Creating 2x2 tables
+
+Suppose we are interested in the patterns of marijuana use by different
+racial/ethnic groups.
 
 We are going to create a 2x2 table of the weighted counts (frequencies)
 of marijuana use by race and plot it.
@@ -347,7 +351,8 @@ mj_race_tab <- nhanes_design |>
   ### removing missings in the marijuana variable
   filter(!is.na(marijuana)) |>
   group_by(race1, marijuana) |>
-  summarise(Freq = survey_total())
+  summarise(Freq = survey_total()) |>
+  arrange(desc(marijuana))
 
 mj_race_tab
 ```
@@ -356,16 +361,16 @@ mj_race_tab
     ## # Groups:   race1 [5]
     ##    race1    marijuana      Freq  Freq_se
     ##    <fct>    <fct>         <dbl>    <dbl>
-    ##  1 Black    No         7866513.  816261.
-    ##  2 Black    Yes       10281125. 1003805.
-    ##  3 Hispanic No         5633062.  989714.
-    ##  4 Hispanic Yes        3932857.  599802.
-    ##  5 Mexican  No         8823639. 1303554.
-    ##  6 Mexican  Yes        5546273.  805596.
-    ##  7 White    No        33432309. 3082925.
-    ##  8 White    Yes       64414588. 5074528.
-    ##  9 Other    No         6806435.  820606.
-    ## 10 Other    Yes        4204466.  429334.
+    ##  1 Black    Yes       10281125. 1003805.
+    ##  2 Hispanic Yes        3932857.  599802.
+    ##  3 Mexican  Yes        5546273.  805596.
+    ##  4 White    Yes       64414588. 5074528.
+    ##  5 Other    Yes        4204466.  429334.
+    ##  6 Black    No         7866513.  816261.
+    ##  7 Hispanic No         5633062.  989714.
+    ##  8 Mexican  No         8823639. 1303554.
+    ##  9 White    No        33432309. 3082925.
+    ## 10 Other    No         6806435.  820606.
 
 We can visualize the table created using a stacked bar graph. Note that
 the bar height corresponds to the total of the group.
@@ -388,7 +393,8 @@ mj_race_prop <- nhanes_design |>
   filter(!is.na(marijuana)) |>
   group_by(race1, marijuana) |>
   ### vartype = "ci" adds confidence intervals
-  summarise(prop = survey_prop(vartype = "ci"))
+  summarise(prop = survey_prop(vartype = "ci")) |>
+  arrange(desc(marijuana), desc(prop))
 
 mj_race_prop
 ```
@@ -397,16 +403,16 @@ mj_race_prop
     ## # Groups:   race1 [5]
     ##    race1    marijuana  prop prop_low prop_upp
     ##    <fct>    <fct>     <dbl>    <dbl>    <dbl>
-    ##  1 Black    No        0.433    0.410    0.457
+    ##  1 White    Yes       0.658    0.623    0.693
     ##  2 Black    Yes       0.567    0.543    0.590
-    ##  3 Hispanic No        0.589    0.531    0.646
-    ##  4 Hispanic Yes       0.411    0.354    0.469
-    ##  5 Mexican  No        0.614    0.578    0.650
-    ##  6 Mexican  Yes       0.386    0.350    0.422
-    ##  7 White    No        0.342    0.307    0.377
-    ##  8 White    Yes       0.658    0.623    0.693
-    ##  9 Other    No        0.618    0.553    0.683
-    ## 10 Other    Yes       0.382    0.317    0.447
+    ##  3 Hispanic Yes       0.411    0.354    0.469
+    ##  4 Mexican  Yes       0.386    0.350    0.422
+    ##  5 Other    Yes       0.382    0.317    0.447
+    ##  6 Other    No        0.618    0.553    0.683
+    ##  7 Mexican  No        0.614    0.578    0.650
+    ##  8 Hispanic No        0.589    0.531    0.646
+    ##  9 Black    No        0.433    0.410    0.457
+    ## 10 White    No        0.342    0.307    0.377
 
 Plotting the table above. Note that the height of the bar is equal to 1.
 
@@ -423,8 +429,9 @@ mj_race_prop |>
 
 ##### Hypothesis testing
 
-We are going to run a test of heterogeneity using a Chisq to see if
-there is any difference in marijuana use between race groups.
+We are going to run a Chi Square test of heterogeneity using the
+function svychisq to see if there is any significant differences in
+marijuana use between race groups.
 
 ``` r
 svychisq(~race1 + marijuana, nhanes_design, statistic = "Chisq")

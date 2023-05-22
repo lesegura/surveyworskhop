@@ -177,7 +177,7 @@ mj_race_prop |>
 ```
 
 ##### Hypothesis testing
-We are going to run a test of heterogeneity using a Chisq to see if there is any difference in marijuana use between race groups.
+We are going to run a Chi Square test of heterogeneity using the function svychisq to see if there is any significant differences in marijuana use between race groups.
 ```{r chisq, echo = T}
 svychisq(~race1 + marijuana, nhanes_design, statistic = "Chisq")
 

@@ -56,7 +56,7 @@ glimpse(NHANESraw)
 
 R is case sensitive. So, one of the things I recommend is to transform all variable names to lower caps. This will prevent R throwing errors because you mistyped a variable name.
 
-```{r low caps, echo = T}
+```{r fix names, echo = T}
 ### transform variable names to lower caps
 NHANESraw <- NHANESraw |>
   janitor::clean_names()
@@ -115,7 +115,7 @@ race_tab <- nhanes_design |>
 race_tab
 ```
 
-Create a graph to visualy examine the weighted distribution of race.
+Create a graph to visually examine the weighted distribution of race.
 ```{r race graph, echo = T}
 race_tab |>
   ggplot(aes(x = race1, y = prop)) + 
@@ -124,18 +124,22 @@ race_tab |>
   scale_x_discrete(limits = race_tab$race1) + 
   xlab("") +
   ylab("%") +
-  labs(title = "Survey-Weighted Race Distribution in the U.S.")
+  labs(title = "Survey-Weighted Race Distribution in the U.S.") +
+  theme_classic()
 ```
 
 
 ##### Creating 2x2 tables
+Suppose we are interested in the patterns of marijuana use by different racial/ethnic groups.
+
 We are going to create a 2x2 table of the weighted counts (frequencies) of marijuana use by race and plot it.
 ```{r mu by race, echo = T}
 mj_race_tab <- nhanes_design |>
   ### removing missings in the marijuana variable
   filter(!is.na(marijuana)) |>
   group_by(race1, marijuana) |>
-  summarise(Freq = survey_total())
+  summarise(Freq = survey_total()) |>
+  arrange(desc(marijuana))
 
 mj_race_tab
 ```
@@ -155,7 +159,8 @@ mj_race_prop <- nhanes_design |>
   filter(!is.na(marijuana)) |>
   group_by(race1, marijuana) |>
   ### vartype = "ci" adds confidence intervals
-  summarise(prop = survey_prop(vartype = "ci"))
+  summarise(prop = survey_prop(vartype = "ci")) |>
+  arrange(desc(marijuana), desc(prop))
 
 mj_race_prop
 ```

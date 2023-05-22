@@ -198,17 +198,17 @@ Another thing I want you to notice is the warning message that R threw at us. Do
 We can add independent variables to the logistic regression model with a + sign to run a multivariable logistic regression
 ```{r logistic2, echo = T}
 svyglm(marijuana ~ race1 + gender, design = nhanes_design, family = binomial(link = "logit")) |>
-  tidy(exponentiate = T, conf.int = T)
+  broom::tidy(exponentiate = T, conf.int = T)
 ```
 
 And add an interaction term between race and gender with the * sign. Notice that in R you don't have to put the main effects when adding interactions.
 ```{r interaction, echo = T}
 ### logistic regression with main effects and interaction between race1 and gender (race1 * gender)
 svyglm(marijuana ~ race1 + gender + race1 * gender, design = nhanes_design, family = binomial(link = "logit")) |>
-  tidy(exponentiate = T, conf.int = T)
+  broom::tidy(exponentiate = T, conf.int = T)
 
 ### The model above with main effects is exactly the same as the following model with just the interaction term (without the main effects)
 ### logistic regression with only an interaction between race1 and gender (race1 * gender)
 svyglm(marijuana ~ race1 * gender, design = nhanes_design, family = binomial(link = "logit")) |>
-  tidy(exponentiate = T, conf.int = T)
+  broom::tidy(exponentiate = T, conf.int = T)
 ```

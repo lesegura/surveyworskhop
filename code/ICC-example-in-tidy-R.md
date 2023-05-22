@@ -1,6 +1,6 @@
 ICC example in tidy R
 ================
-Luis E Segura
+Analysis of Complex Survey Data @episummer
 2023-05-18
 
 - <a

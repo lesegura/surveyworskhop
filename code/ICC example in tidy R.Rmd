@@ -1,6 +1,6 @@
 ---
 title: "ICC example in tidy R"
-author: "Luis E Segura"
+author: "Analysis of Complex Survey Data @episummer"
 date: "2023-05-18"
 output: 
   github_document:

@@ -179,7 +179,7 @@ svychisq(~race1 + marijuana, nhanes_design, statistic = "Chisq")
 
 ```
 
-#### Modeling categorical variables 
+### Step 5: Modeling categorical variables 
 Run a simple survey weighted logistic regression using the function svyglm() from the survey package. We are going to use the function tidy() from the broom package to tidy our model regression output. The first argument of the svyglm() function is the outcome variable, followed by the predictor variables. These should be written as a formula, using the ~ sign to denote that you are regressing your outcome on the predictors.
 
 ```{r logistic, echo = T}

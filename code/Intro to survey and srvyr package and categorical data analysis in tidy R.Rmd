@@ -2,9 +2,10 @@
 title: "Intro to survey and srvyr package and categorical data analysis in tidy R"
 author: "Luis E Segura"
 date: "2023-05-18"
-output: github_document
-  toc: true
-  toc_depth: 3
+output: 
+  github_document:
+    toc: true
+    toc_depth: 3
 editor_options: 
   chunk_output_type: console
 ---
@@ -13,6 +14,8 @@ This rmarkdown file accompanies Video 10.1 as an introduction to analyze categor
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+options(scipen = 999)
 
 library(here)
 ```

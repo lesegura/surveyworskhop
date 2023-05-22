@@ -98,9 +98,10 @@ nhanes_design
 
 ```
 
-### Step 4: Exploring Categorical Data
+### Step 4: Analyze Categorical Data
 
-#### Summarizing a categorical variable
+#### Exploring Categorical Data
+##### Summarizing a categorical variable
 
 We start by estimating the survey weighted frequencies of the variable race.
 ```{r explore race, echo = T}
@@ -127,7 +128,7 @@ race_tab |>
 ```
 
 
-#### Creating 2x2 tables
+##### Creating 2x2 tables
 We are going to create a 2x2 table of the weighted counts (frequencies) of marijuana use by race and plot it.
 ```{r mu by race, echo = T}
 mj_race_tab <- nhanes_design |>
@@ -138,7 +139,6 @@ mj_race_tab <- nhanes_design |>
 
 mj_race_tab
 ```
-
 
 We can visualize the table created using a stacked bar graph. Note that the bar height corresponds to the total of the group.
 ```{r mu by race plot, echo = T}
@@ -160,7 +160,6 @@ mj_race_prop <- nhanes_design |>
 mj_race_prop
 ```
 
-
 Plotting the table above. Note that the height of the bar is equal to 1.
 ```{r mu by race2 plot2, echo = T}
 mj_race_prop |> 
@@ -172,14 +171,14 @@ mj_race_prop |>
 
 ```
 
-#### Hypothesis testing
+##### Hypothesis testing
 We are going to run a test of heterogeneity using a Chisq to see if there is any difference in marijuana use between race groups.
 ```{r chisq, echo = T}
 svychisq(~race1 + marijuana, nhanes_design, statistic = "Chisq")
 
 ```
 
-### Step 5: Modeling categorical variables 
+##### Modeling categorical variables 
 Run a simple survey weighted logistic regression using the function svyglm() from the survey package. We are going to use the function tidy() from the broom package to tidy our model regression output. The first argument of the svyglm() function is the outcome variable, followed by the predictor variables. These should be written as a formula, using the ~ sign to denote that you are regressing your outcome on the predictors.
 
 ```{r logistic, echo = T}

@@ -1,7 +1,7 @@
 Intro to survey and srvyr package and categorical data analysis in tidy
 R
 ================
-Luis E Segura
+Analysis of Complex Survey Data @episummer
 2023-05-18
 
 - <a href="#step-1-load-packages-and-dataset"

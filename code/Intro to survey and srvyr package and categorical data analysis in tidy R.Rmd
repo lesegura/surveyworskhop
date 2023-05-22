@@ -80,10 +80,10 @@ Once your dataset is loaded and all variables you need are clean and recoded cre
 
 The survey design tells R what sampling design generated the data.
 The survey design object for a complex sample has the following information:
-- the data
-- weights (we are using the new weights we created above) 
-- strata
-- sample stages information
+* the data
+* weights (we are using the new weights we created above) 
+* strata
+* sample stages information
 
 The NHANES has 4 sampling stages. However, we only need to declare the first clustering stage (sdmvpsu).
 

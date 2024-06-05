@@ -52,11 +52,7 @@ R is case sensitive. So, one of the things I recommend is to transform all varia
 ```{r low caps, echo = T}
 ### transform variable names to lower caps
 NHANESraw <- NHANESraw |>
-  rename_all(.funs = tolower)
-
-### print variable names
-NHANESraw |>
-  names()
+  janitor::clean_names()
 
 ```
 
@@ -88,7 +84,6 @@ nhanes_design <- NHANESraw |>
                    weights = new_wt, 
                    nest = T)
 
-nhanes_design
 
 ```
 
@@ -98,25 +93,30 @@ nhanes_design
 
 For this example, we are going to use alcohol consumption per day as our outcome of interest. Alcohol consumption per day is a numeric variable. We call the function class() function to see if this is a numeric variable.
 ```{r class, echo = T}
-class(NHANESraw$alcoholday)
+NHANESraw |>
+  pull(alcohol_day) |>
+  class()
+
 ```
 
 We do a bit of exploration of this variable before estimating survey weighted summary statistics. Note there are missing values and extreme values. One package that I find very useful for quick summary statistics is skimr 
 ```{r explore, echo = T}
-### We can use base R functions to get quick summaries. Note there are missing values (NA's)
-summary(NHANESraw$alcoholday) 
+### We can use the function summary() to get a quick summary of this variable. Note there are missing values (NA's)
+NHANESraw |>
+  pull(alcohol_day) |>
+  summary()
 
 ### using the function skim from the package skimr
-library(skimr)
-
 NHANESraw |> 
-  skim(alcoholday)
+  pull(alcohol_day) |>
+  skimr::skim()
+
 ```
 
 Plot a histogram to see the variable distribution
 ```{r hist, echo = T}
 NHANESraw |>
-  ggplot(aes(x = alcoholday)) +
+  ggplot(aes(x = alcohol_day)) +
   geom_histogram() + 
   theme_classic()
 
@@ -128,9 +128,9 @@ Estimate the survey weighted mean, median, quantiles
 ### add the argument na.rm = TRUE to survey functions to ignore the missing values.
 nhanes_design |>
   ### request confidence intervals with option vartype = "ci"
-  summarise(mean = survey_mean(alcoholday, na.rm = T, vartype = "ci"), 
-            median = survey_median(alcoholday, na.rm = T, vartype = "ci"), 
-            quantile = survey_quantile(alcoholday, c(0.25, 0.75), na.rm = T, vartype = "ci")) |>
+  summarise(mean = survey_mean(alcohol_day, na.rm = T, vartype = "ci"), 
+            median = survey_median(alcohol_day, na.rm = T, vartype = "ci"), 
+            quantile = survey_quantile(alcohol_day, c(0.25, 0.75), na.rm = T, vartype = "ci")) |>
   ### pivot the table to long
   pivot_longer(everything(), names_to = "statistics", values_to = "value") 
 
@@ -139,15 +139,14 @@ nhanes_design |>
 #### Summarizing by groups
 Lets estimate the average alcohol consumption per day by race group and, separately, by gender
 ```{r by grps, echo = T}
-nhanes_design |>
+alc_race <- nhanes_design |>
   group_by(race1) |>
-  summarise(mean = survey_mean(alcoholday, na.rm = T, vartype = "ci"))
+  summarise(mean = survey_mean(alcohol_day, na.rm = T, vartype = "ci"))
 
 alc_sex <- nhanes_design |>
   group_by(gender) |>
-  summarise(mean = survey_mean(alcoholday, na.rm = T, vartype = "ci"))
+  summarise(mean = survey_mean(alcohol_day, na.rm = T, vartype = "ci"))
 
-alc_sex
 ```
 
 We can also use a bar graph to visualise these differences
@@ -168,7 +167,7 @@ alc_sex |>
 #### Hypothesis testing
 Test the difference in mean alcohol consumption by gender.
 ```{r ttest, echo = T}
-svyttest(alcoholday ~ gender, design = nhanes_design) 
+svyttest(alcohol_day ~ gender, design = nhanes_design) 
 
 ```
 
@@ -176,7 +175,7 @@ Estimate the average consumption of alcoholic drinks per day by age
 ```{r alc age, echo = T}
 alc_age <- nhanes_design |>
   group_by(age) |>
-  summarise(mean = survey_mean(alcoholday, na.rm = T, vartype = "ci")) 
+  summarise(mean = survey_mean(alcohol_day, na.rm = T, vartype = "ci")) 
 
 alc_age |>
   ggplot(aes(x = age, y = mean)) + 
@@ -192,9 +191,9 @@ So, we are going to exclude these individuals from our analysis.
 
 Lets look at the trend in alcohol consumption per day by age among those aged 18 and older. We are going to add a linear trend line to our graph.
 ```{r alc age 18, echo = T}
-alc_age %>%
+alc_age |>
   ### filter to those 18 and older
-  filter(age > 17) %>%
+  filter(age > 17) |>
   ggplot(aes(x = age, y = mean)) + 
   geom_line() + 
   ### Remove confidence interval
@@ -208,7 +207,7 @@ alc_age %>%
   ggplot(aes(x = age, y = mean)) +
   geom_point() +
   ### add confidence interval
-  geom_smooth(method = "lm") +
+  geom_smooth(method = "lm", se = FALSE) +
   ylab("Average consumption of alcohol per day") + 
   xlab("Age in years") + 
   theme_classic()
@@ -229,12 +228,12 @@ alc_age %>%
 
 Estimate the average consumption of alcoholic drinks per day by both age and gender among adults (18 and older)
 ```{r alc age * gender, echo = T}
-alc_age_male <- nhanes_design |>
+alc_gender_age <- nhanes_design |>
   filter(age > 17) |>
   group_by(gender, age) |>
-  summarise(mean = survey_mean(alcoholday, na.rm = T, vartype = "ci"))
+  summarise(mean = survey_mean(alcohol_day, na.rm = T, vartype = "ci"))
 
-alc_age_male |>
+alc_gender_age |>
   ggplot(aes(x = age, y = mean, color = gender)) + 
   geom_point() +
   geom_line() + 
@@ -247,16 +246,18 @@ alc_age_male |>
 Run a simple linear regression using survey weighted data to model the daily consumption of alcoholic beverages with age as an explanatory variable. 
 We are going to load another package called broom and use the function tidy() to tidy our model regression output,
 ```{r linear, echo = T}
-library(broom)
+alc_model <- svyglm(alcohol_day ~ age, design = nhanes_design, family = gaussian) 
 
-svyglm(alcoholday ~ age, design = nhanes_design, family = gaussian) |>
-  tidy(conf.int = T)
+alc_model |>
+  broom::tidy(conf.int = T)
 ```
 
 Add more independent variables (gender) to the logistic regression model to run a multivariable logistic regression
 ```{r multi linear, echo = T}
-svyglm(alcoholday ~ age + gender, design = nhanes_design, family = gaussian) |>
-  tidy(conf.int = T)
+alc_model2 <- svyglm(alcohol_day ~ age + gender, design = nhanes_design, family = gaussian)
+
+alc_model2 |>
+  broom::tidy(conf.int = T)
 
 ```
 

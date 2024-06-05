@@ -139,7 +139,7 @@ mj_race_tab <- nhanes_design |>
   filter(!is.na(marijuana)) |>
   group_by(race1, marijuana) |>
   summarise(Freq = survey_total()) |>
-  arrange(desc(marijuana))
+  arrange(desc(marijuana), desc(Freq))
 
 mj_race_tab
 ```
@@ -187,7 +187,7 @@ svychisq(~race1 + marijuana, nhanes_design, statistic = "Chisq")
 Run a simple survey weighted logistic regression using the function svyglm() from the survey package. We are going to use the function tidy() from the broom package to tidy our model regression output. The first argument of the svyglm() function is the outcome variable, followed by the predictor variables. These should be written as a formula, using the ~ sign to denote that you are regressing your outcome on the predictors.
 
 ```{r logistic, echo = T}
-svyglm(marijuana ~ race1, design = nhanes_design, family = binomial(link = "logit")) |>
+svyglm(marijuana ~ race1, design = nhanes_design, family = quasibinomial(link = "logit")) |>
   ### exponentiate coefficients from logistic regression, get confidence intervals
   broom::tidy(exponentiate = T, conf.int = T)
   
